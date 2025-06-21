@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 export default function Home() {
+  const [subject, setSubject] = useState('');
   const [grade, setGrade] = useState('');
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState('');
@@ -12,7 +13,13 @@ export default function Home() {
   const [answerInput, setAnswerInput] = useState('');
   const [attempts, setAttempts] = useState(0);
 
-  // 1) Fetch topics for a grade
+  // 1) Subject selection
+  const handleSubjectSelect = (subj) => {
+    console.log('Subject selected:', subj);
+    setSubject(subj);
+  };
+
+  // 2) Fetch topics for a grade
   const handleGradeSelect = async (e) => {
     const g = e.target.value;
     console.log('Grade selected:', g);
@@ -21,7 +28,7 @@ export default function Home() {
     setContent(null);
     setTopicsLoading(true);
     try {
-      const res = await fetch(`/api/topics?grade=${g}`);
+      const res = await fetch(`/api/topics?grade=${g}&subject=${subject}`);
       const data = await res.json();
       console.log('Topics API response:', data);
       setTopics(data.topics || []);
@@ -33,7 +40,7 @@ export default function Home() {
     }
   };
 
-  // 2) Start lesson on a topic
+  // 3) Start lesson on a topic
   const handleTopicSelect = async (topic) => {
     console.log('Topic selected:', topic);
     setSelectedTopic(topic);
@@ -45,7 +52,7 @@ export default function Home() {
       const res = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, topic, history: [] }),
+        body: JSON.stringify({ grade, subject, topic, history: [] }),
       });
       const data = await res.json();
       console.log('Initial lesson content:', data);
@@ -84,7 +91,7 @@ export default function Home() {
       const res = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, topic: selectedTopic, history: newHistory }),
+        body: JSON.stringify({ grade, subject, topic: selectedTopic, history: newHistory }),
       });
       const data = await res.json();
       console.log('Lesson follow-up content:', data);
@@ -109,7 +116,7 @@ export default function Home() {
       const res = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, topic: selectedTopic, history, reveal: true }),
+        body: JSON.stringify({ grade, subject, topic: selectedTopic, history, reveal: true }),
       });
       const data = await res.json();
       console.log('Reveal content:', data);
@@ -124,7 +131,29 @@ export default function Home() {
 
   // --- UI branches ---
 
-  // A) Grade picker
+  // A) Subject picker
+  if (!subject) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-md space-y-4">
+          <h1 className="text-3xl font-bold mb-6 text-center">Select Subject</h1>
+          <div className="grid grid-cols-2 gap-4">
+            {['math','science','spanish','hindi'].map(s => (
+              <button
+                key={s}
+                onClick={() => handleSubjectSelect(s)}
+                className="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded"
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // B) Grade picker
   if (!grade) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -140,6 +169,12 @@ export default function Home() {
               <option key={g} value={g}>{g}th Grade</option>
             ))}
           </select>
+          <button
+            onClick={() => { setSubject(''); setGrade(''); }}
+            className="mt-4 text-blue-500 hover:underline"
+          >
+            ← Back to Subject
+          </button>
         </div>
       </div>
     );
@@ -162,9 +197,15 @@ export default function Home() {
         {/* Back to grade selection */}
         <button
           onClick={() => { setGrade(''); setTopics([]); }}
-          className="mb-4 text-blue-500 hover:underline"
+          className="mb-2 text-blue-500 hover:underline"
         >
           ← Back to Grade
+        </button>
+        <button
+          onClick={() => { setSubject(''); setGrade(''); setTopics([]); }}
+          className="mb-4 text-blue-500 hover:underline ml-2"
+        >
+          ← Back to Subject
         </button>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {topics.map((t,i) => (
@@ -223,7 +264,7 @@ export default function Home() {
           <div className="flex justify-center mb-4">
             <img
               src={questionToShow.imageUrl}
-              alt="Fun math scene"
+              alt="Fun lesson scene"
               className="rounded-xl border-2 border-blue-200 shadow-md max-h-64 object-contain"
             />
           </div>
