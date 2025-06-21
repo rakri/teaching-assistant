@@ -117,6 +117,23 @@ export default async function handler(req, res) {
       if (!resp.choices?.length) throw new Error('No choices returned from OpenAI');
       const raw = resp.choices[0].message.content;
       const data = stripAndParseJson(raw);
+      // For first turn, add similar logic after parsing data
+      if (data.imagePrompt) {
+        try {
+          const imgResp = await openai.images.generate({
+            prompt: data.imagePrompt,
+            n: 1,
+            size: '512x512',
+            response_format: 'url',
+          });
+          if (imgResp.data && imgResp.data[0]?.url) {
+            data.imageUrl = imgResp.data[0].url;
+            console.log('🖼️ Generated image URL:', data.imageUrl);
+          }
+        } catch (imgErr) {
+          console.error('❌ Error generating image:', imgErr);
+        }
+      }
       return res.status(200).json(data);
     } catch (err) {
       console.error('❌ Initial lesson error:', err);
@@ -218,7 +235,8 @@ export default async function handler(req, res) {
     "prompt": "…string…",
     "type": "numeric"|"mcq",
     "options"?: ["…string…"]
-  }
+  },
+  "imagePrompt": "…string describing a fun, colorful scene for this question…"
 }`,
             "```"
           ].join('\n')
@@ -242,6 +260,24 @@ export default async function handler(req, res) {
           evalData.explanation = genData.explanation;
           console.log('✅ Extracted nextQuestion:', JSON.stringify(evalData.nextQuestion, null, 2));
           console.log('📖 Follow-up explanation:', genData.explanation);
+          // After parsing genData, if genData.imagePrompt exists, call OpenAI image API
+          if (genData.imagePrompt) {
+            try {
+              const imgResp = await openai.images.generate({
+                prompt: genData.imagePrompt,
+                n: 1,
+                size: '512x512',
+                response_format: 'url',
+              });
+              if (imgResp.data && imgResp.data[0]?.url) {
+                genData.imageUrl = imgResp.data[0].url;
+                evalData.nextQuestion.imageUrl = genData.imageUrl;
+                console.log('🖼️ Generated image URL:', genData.imageUrl);
+              }
+            } catch (imgErr) {
+              console.error('❌ Error generating image:', imgErr);
+            }
+          }
         } catch (err) {
           console.error('❌ Error parsing generated question:', err);
         }

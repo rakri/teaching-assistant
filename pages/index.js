@@ -207,44 +207,49 @@ export default function Home() {
   const showExplanation = content.status !== 'incorrect' && Boolean(content.explanation);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-100 to-blue-100 p-6 flex flex-col items-center">
       {/* Back to topics */}
       <button
         onClick={() => { setSelectedTopic(''); }}
-        className="self-start mb-4 text-blue-500 hover:underline"
+        className="self-start mb-4 text-blue-500 hover:underline font-bold text-lg"
       >
         ← Back to Topics
       </button>
 
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-6 space-y-6">
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-lg p-8 space-y-8 border-4 border-yellow-200">
+        {/* Show image if available */}
+        {questionToShow.imageUrl && (
+          <div className="flex justify-center mb-4">
+            <img
+              src={questionToShow.imageUrl}
+              alt="Fun math scene"
+              className="rounded-xl border-2 border-blue-200 shadow-md max-h-64 object-contain"
+            />
+          </div>
+        )}
         {/* Show detailed solution when revealed */}
         {content.status === 'revealed' && content.solution && (
           <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded">
             <p className="text-lg font-medium">{content.solution}</p>
           </div>
         )}
-
         {/* Show feedback above the next question */}
         {content.feedback && (
-          <div className={`${feedbackColor} text-lg font-medium`}>
-            {content.feedback}
-          </div>
+          <div className={`${feedbackColor} text-lg font-medium`}>{content.feedback}</div>
         )}
         {showExplanation && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
             <p className="text-lg">{content.explanation}</p>
           </div>
         )}
-
         {isIncorrect && content.hint && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
             <p className="text-lg">{content.hint}</p>
           </div>
         )}
-        <div className="bg-white p-4 border border-gray-200 rounded">
-          <p className="text-xl font-semibold">{questionToShow.prompt}</p>
+        <div className="bg-white p-4 border-2 border-blue-100 rounded-xl">
+          <p className="text-xl font-semibold text-blue-800 drop-shadow-sm">{questionToShow.prompt}</p>
         </div>
-
         <div>
           {questionToShow.type === 'numeric' ? (
             <div className="flex space-x-4">
@@ -252,12 +257,12 @@ export default function Home() {
                 type="text"
                 value={answerInput}
                 onChange={e => setAnswerInput(e.target.value)}
-                className="flex-1 border border-gray-300 rounded p-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="flex-1 border-2 border-yellow-300 rounded-xl p-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-yellow-50"
                 placeholder="Type your answer..."
               />
               <button
                 onClick={handleAnswerSubmit}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition"
+                className="bg-gradient-to-r from-yellow-400 to-blue-400 hover:from-yellow-500 hover:to-blue-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition"
               >
                 Submit
               </button>
@@ -271,7 +276,7 @@ export default function Home() {
                     setAnswerInput(opt);
                     handleAnswerSubmit();
                   }}
-                  className="border border-gray-300 p-3 rounded-lg hover:bg-blue-50 text-lg transition"
+                  className="border-2 border-yellow-300 p-3 rounded-xl hover:bg-blue-50 text-lg font-semibold transition bg-yellow-50 shadow"
                 >
                   {opt}
                 </button>
@@ -282,7 +287,7 @@ export default function Home() {
          {attempts >= 2 && content.status === 'incorrect' && (
            <button
              onClick={handleReveal}
-             className="mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
+             className="mt-4 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold px-4 py-2 rounded-xl shadow"
            >
              Reveal Answer
            </button>
