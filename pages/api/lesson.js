@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
   console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-  const { grade, subject, topic, history, reveal } = req.body;
+  const { grade, subject, topic, history, reveal, difficulty = 'medium' } = req.body;
   // Validate payload
   if (!grade || !topic || !Array.isArray(history)) {
     return res.status(400).json({ error: 'Invalid request payload' });
@@ -30,6 +30,22 @@ export default async function handler(req, res) {
 
   const isFirst = history.length === 0;
 
+  // Generate difficulty-specific instructions
+  const getDifficultyInstructions = (difficultyLevel) => {
+    switch (difficultyLevel) {
+      case 'easy':
+        return 'Generate EASIER questions with simpler concepts, smaller numbers, basic vocabulary, and more straightforward problems. Provide extra hints and encouragement.';
+      case 'hard':
+        return 'Generate CHALLENGING questions with more complex concepts, larger numbers, advanced vocabulary, and multi-step problems that require deeper thinking.';
+      case 'medium':
+      default:
+        return 'Generate questions at a moderate difficulty level appropriate for the grade level.';
+    }
+  };
+
+  const difficultyInstructions = getDifficultyInstructions(difficulty);
+  console.log(`Using difficulty: ${difficulty} - ${difficultyInstructions}`);
+
   // Handle reveal request: provide detailed solution and next question
   if (!isFirst && reveal) {
     console.log('🕵️ Reveal mode: generating detailed solution and next question');
@@ -39,6 +55,7 @@ export default async function handler(req, res) {
         content: [
           subject === 'spanish' || subject === 'hindi' ? `You are a detailed, explanatory ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a detailed, explanatory ${subject} tutor for ${grade}th-graders.`,
           subject === 'spanish' || subject === 'hindi' ? `Provide explanations in English and ${subject} content with English translations. Focus on practical language learning with age-appropriate examples.` : `Focus on teaching fundamental concepts with age-appropriate language and short real-world examples.`,
+          difficultyInstructions,
           `Ensure your solutions are correct and respond with JSON only; no extra text.`
         ].join(' ')
       },
@@ -92,6 +109,7 @@ export default async function handler(req, res) {
           subject === 'spanish' || subject === 'hindi' ? `You are a playful, engaging ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
           subject === 'spanish' || subject === 'hindi' ? `Provide explanations in English and ${subject} content with English translations. Focus on practical language learning with brief real-world examples that help English speakers understand ${subject}.` : `Focus on helping students master fundamental ideas with age-appropriate language and brief real-world examples.`,
           `Make explanations fun—use characters, stories, or mini-scenes.`,
+          difficultyInstructions,
           `Value correctness greatly and always respond with JSON only; no extra text.`
         ].join(' ')
       },
@@ -146,6 +164,7 @@ export default async function handler(req, res) {
           subject === 'spanish' || subject === 'hindi' ? `Focus on checking that the English-speaking student grasps the ${subject} language concept. Provide feedback and hints in English with ${subject} translations when helpful.` : `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
           `Based on the student’s last answer and the full question context (prompt and explanation), infer the likely mistake and give a short real-world hint if possible.`,
           `For incorrect answers, your NEXT QUESTION must be self-contained: repeat the entire question object including its explanation.`,
+          difficultyInstructions,
           `Always respond with JSON only; no extra text.`
         ].join(' ')
       },
@@ -211,6 +230,7 @@ export default async function handler(req, res) {
             subject === 'spanish' || subject === 'hindi' ? `You are a playful, engaging ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
             subject === 'spanish' || subject === 'hindi' ? `Focus on reinforcing ${subject} language concepts with English explanations and ${subject} content with translations. Use real-world contexts that help English speakers understand ${subject}.` : `Focus on reinforcing basic concepts with age-appropriate language and real-world contexts.`,
             `Make explanations fun—use characters, stories, or mini-scenes.`,
+            difficultyInstructions,
             `Always respond with JSON only; no extra text.`
           ].join(' ')
         },

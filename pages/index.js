@@ -12,6 +12,47 @@ export default function Home() {
   const [lessonLoading, setLessonLoading] = useState(false);
   const [answerInput, setAnswerInput] = useState('');
   const [attempts, setAttempts] = useState(0);
+  
+  // Score tracking and adaptive difficulty
+  const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [totalAnswers, setTotalAnswers] = useState(0);
+  const [badges, setBadges] = useState([]);
+  const [difficultyLevel, setDifficultyLevel] = useState('medium');
+
+  // Badge configuration
+  const badgeThresholds = [5, 10, 15, 20];
+  const badgeConfig = {
+    5: { name: 'Bronze Star', icon: '🥉', color: 'bg-yellow-600' },
+    10: { name: 'Silver Star', icon: '🥈', color: 'bg-gray-400' },
+    15: { name: 'Gold Star', icon: '🥇', color: 'bg-yellow-500' },
+    20: { name: 'Diamond Star', icon: '💎', color: 'bg-blue-500' }
+  };
+
+  // Calculate difficulty based on performance
+  const calculateDifficulty = (correct, total) => {
+    if (total < 3) return 'medium'; // Start with medium difficulty
+    const percentage = (correct / total) * 100;
+    if (percentage < 40) return 'easy';
+    if (percentage > 75) return 'hard';
+    return 'medium';
+  };
+
+  // Award badges based on correct answers
+  const awardBadges = (correctCount) => {
+    const newBadges = [...badges];
+    badgeThresholds.forEach(threshold => {
+      if (correctCount >= threshold && !badges.find(b => b.threshold === threshold)) {
+        newBadges.push({
+          threshold,
+          ...badgeConfig[threshold],
+          earned: true
+        });
+      }
+    });
+    if (newBadges.length > badges.length) {
+      setBadges(newBadges);
+    }
+  };
 
   // 1) Subject selection
   const handleSubjectSelect = (subj) => {
@@ -47,12 +88,17 @@ export default function Home() {
     setHistory([]);
     setContent(null);
     setAnswerInput('');
+    // Reset score tracking for new topic
+    setCorrectAnswers(0);
+    setTotalAnswers(0);
+    setBadges([]);
+    setDifficultyLevel('medium');
     setLessonLoading(true);
     try {
       const res = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, subject, topic, history: [] }),
+        body: JSON.stringify({ grade, subject, topic, history: [], difficulty: difficultyLevel }),
       });
       const data = await res.json();
       console.log('Initial lesson content:', data);
@@ -91,17 +137,35 @@ export default function Home() {
       const res = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, subject, topic: selectedTopic, history: newHistory }),
+        body: JSON.stringify({ grade, subject, topic: selectedTopic, history: newHistory, difficulty: difficultyLevel }),
       });
       const data = await res.json();
       console.log('Lesson follow-up content:', data);
       setContent(data);
-      // track incorrect attempts
-      if (data.status === 'incorrect') {
-        setAttempts(prev => prev + 1);
-      } else {
+
+      // Track score and update difficulty
+      const newTotalAnswers = totalAnswers + 1;
+      let newCorrectAnswers = correctAnswers;
+      
+      if (data.status === 'correct') {
+        newCorrectAnswers = correctAnswers + 1;
         setAttempts(0);
+      } else if (data.status === 'incorrect') {
+        setAttempts(prev => prev + 1);
       }
+      
+      // Update score tracking
+      setTotalAnswers(newTotalAnswers);
+      setCorrectAnswers(newCorrectAnswers);
+      
+      // Award badges
+      awardBadges(newCorrectAnswers);
+      
+      // Update difficulty level
+      const newDifficulty = calculateDifficulty(newCorrectAnswers, newTotalAnswers);
+      setDifficultyLevel(newDifficulty);
+      
+      console.log(`Score: ${newCorrectAnswers}/${newTotalAnswers}, Difficulty: ${newDifficulty}`);
     } catch (err) {
       console.error('Error fetching next question:', err);
     } finally {
@@ -116,7 +180,7 @@ export default function Home() {
       const res = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, subject, topic: selectedTopic, history, reveal: true }),
+        body: JSON.stringify({ grade, subject, topic: selectedTopic, history, reveal: true, difficulty: difficultyLevel }),
       });
       const data = await res.json();
       console.log('Reveal content:', data);
@@ -257,6 +321,65 @@ export default function Home() {
       >
         ← Back to Topics
       </button>
+
+      {/* Score and Badges Display */}
+      <div className="w-full max-w-2xl mb-6">
+        {/* Score Display */}
+        <div className="bg-white rounded-xl shadow-lg p-4 mb-4 border-2 border-green-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="text-2xl">📊</div>
+              <div>
+                <h3 className="text-lg font-bold text-green-700">Your Score</h3>
+                <p className="text-xl font-semibold text-green-600">
+                  {correctAnswers}/{totalAnswers} questions correct
+                  {totalAnswers > 0 && (
+                    <span className="text-sm text-gray-600 ml-2">
+                      ({Math.round((correctAnswers / totalAnswers) * 100)}%)
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Difficulty</p>
+              <p className="text-lg font-semibold capitalize text-blue-600">{difficultyLevel}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Badges Display */}
+        {badges.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-4 border-2 border-yellow-200">
+            <h3 className="text-lg font-bold text-yellow-700 mb-3 flex items-center space-x-2">
+              <span>🏆</span>
+              <span>Achievements</span>
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {badges.map((badge, index) => (
+                <div
+                  key={index}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${badge.color} text-white shadow-md animate-bounce`}
+                >
+                  <span className="text-2xl">{badge.icon}</span>
+                  <div>
+                    <p className="text-sm font-bold">{badge.name}</p>
+                    <p className="text-xs opacity-90">{badge.threshold} correct!</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Next badge preview */}
+            {correctAnswers < 20 && (
+              <div className="mt-3 p-2 bg-gray-100 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  Next badge at {badgeThresholds.find(t => t > correctAnswers)} correct answers!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-lg p-8 space-y-8 border-4 border-yellow-200">
         {/* Show image if available */}
