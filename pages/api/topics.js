@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       model: MODEL,
       messages: [
         { role: 'system', content: plannerRole },
-        { role: 'user', content: `List the basic topics appropriate for grade ${grade} ${subject} as a JSON array of strings. Always respond with JSON only; no extra text.` }
+        { role: 'user', content: `List the fundamental ${subject} topics appropriate for grade ${grade} as a JSON array of strings. Focus on core concepts that build a strong foundation. Always respond with JSON only; no extra text.` }
       ],
       temperature: TEMPERATURE,
     });
