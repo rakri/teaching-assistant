@@ -10,6 +10,7 @@ export default function Home() {
   const [topicsLoading, setTopicsLoading] = useState(false);
   const [lessonLoading, setLessonLoading] = useState(false);
   const [answerInput, setAnswerInput] = useState('');
+  const [attempts, setAttempts] = useState(0);
 
   // 1) Fetch topics for a grade
   const handleGradeSelect = async (e) => {
@@ -66,7 +67,11 @@ export default function Home() {
 
     const newHistory = [
       ...history,
-      { question: questionToLog, answer: answerInput }
+      {
+        question: questionToLog,
+        explanation: content.explanation,
+        answer: answerInput
+      }
     ];
     console.log('New history:', newHistory);
 
@@ -83,8 +88,34 @@ export default function Home() {
       const data = await res.json();
       console.log('Lesson follow-up content:', data);
       setContent(data);
+      // track incorrect attempts
+      if (data.status === 'incorrect') {
+        setAttempts(prev => prev + 1);
+      } else {
+        setAttempts(0);
+      }
     } catch (err) {
       console.error('Error fetching next question:', err);
+    } finally {
+      setLessonLoading(false);
+    }
+  };
+  
+  // reveal answer handler
+  const handleReveal = async () => {
+    setLessonLoading(true);
+    try {
+      const res = await fetch('/api/lesson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade, topic: selectedTopic, history, reveal: true }),
+      });
+      const data = await res.json();
+      console.log('Reveal content:', data);
+      setContent(data);
+      setAttempts(0);
+    } catch (err) {
+      console.error('Error revealing answer:', err);
     } finally {
       setLessonLoading(false);
     }
@@ -127,6 +158,13 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gray-100 p-6">
         <h1 className="text-3xl font-bold mb-6 text-center">Choose a Topic</h1>
+        {/* Back to grade selection */}
+        <button
+          onClick={() => { setGrade(''); setTopics([]); }}
+          className="mb-4 text-blue-500 hover:underline"
+        >
+          ← Back to Grade
+        </button>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {topics.map((t,i) => (
             <button
@@ -170,7 +208,28 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
+      {/* Back to topics */}
+      <button
+        onClick={() => { setSelectedTopic(''); }}
+        className="self-start mb-4 text-blue-500 hover:underline"
+      >
+        ← Back to Topics
+      </button>
+
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-6 space-y-6">
+        {/* Show detailed solution when revealed */}
+        {content.status === 'revealed' && content.solution && (
+          <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded">
+            <p className="text-lg font-medium">{content.solution}</p>
+          </div>
+        )}
+
+        {/* Show feedback above the next question */}
+        {content.feedback && (
+          <div className={`${feedbackColor} text-lg font-medium`}>
+            {content.feedback}
+          </div>
+        )}
         {showExplanation && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
             <p className="text-lg">{content.explanation}</p>
@@ -182,7 +241,6 @@ export default function Home() {
             <p className="text-lg">{content.hint}</p>
           </div>
         )}
-
         <div className="bg-white p-4 border border-gray-200 rounded">
           <p className="text-xl font-semibold">{questionToShow.prompt}</p>
         </div>
@@ -220,13 +278,16 @@ export default function Home() {
               ))}
             </div>
           )}
+         {/* reveal button after two incorrect attempts */}
+         {attempts >= 2 && content.status === 'incorrect' && (
+           <button
+             onClick={handleReveal}
+             className="mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
+           >
+             Reveal Answer
+           </button>
+         )}
         </div>
-
-        {content.feedback && (
-          <div className={`${feedbackColor} text-lg font-medium`}>
-            {content.feedback}
-          </div>
-        )}
       </div>
     </div>
   );

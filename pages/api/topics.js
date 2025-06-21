@@ -1,44 +1,44 @@
-import OpenAI from 'openai';
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { openai, MODEL, TEMPERATURE, stripAndParseJson } from '../../utils/openai';
+// Using shared OpenAI client and config
 
 export default async function handler(req, res) {
+  // Validate method
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
+    return res.status(405).end('Method Not Allowed');
+  }
   const { grade } = req.query;
   console.log('/api/topics called with grade:', grade);
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: MODEL,
       messages: [
         { role: 'system', content: 'You are an elementary math curriculum planner.' },
-        { role: 'user', content: `List the key topics for grade ${grade} math as a JSON array of strings.` }
+        { role: 'user', content: `List the basic topics appropriate for grade ${grade} math as a JSON array of strings. Always respond with JSON only; no extra text. ` }
       ],
-      temperature: 0.7,
+      temperature: TEMPERATURE,
     });
 
-    let content = response.choices[0].message.content;
-    console.log('Raw OpenAI topics response:', content);
+    if (!response.choices || response.choices.length === 0) {
+      throw new Error('No choices returned from OpenAI');
+    }
+    const raw = response.choices[0].message.content;
+    console.log('Raw OpenAI topics response:', raw);
 
-    // Strip Markdown fences if present
-    // This will remove ```json ... ``` or ``` ... ```
-    content = content
-      .trim()
-      .replace(/^```(?:json)?\s*/, '')
-      .replace(/\s*```$/, '');
-
-    console.log('Cleaned topics string:', content);
-
-    let topics = [];
+    let topics;
     try {
-      topics = JSON.parse(content);
+      topics = stripAndParseJson(raw);
     } catch (err) {
       console.error('JSON parse error in topics:', err);
-      // Optionally: send back the raw string so you can inspect it in the client
-      return res.status(500).json({ error: 'Invalid JSON from LLM', raw: content });
+      return res.status(500).json({ error: 'Invalid JSON from LLM', raw });
     }
+
+    console.log('✅ Parsed topics:', topics);
 
     res.status(200).json({ topics });
   } catch (err) {
     console.error('Error in /api/topics:', err);
-    res.status(500).json({ topics: [] });
+    res.status(502).json({ error: 'Topics generation failed' });
   }
 }
