@@ -11,8 +11,8 @@ export default async function handler(req, res) {
     console.error('Missing OPENAI_API_KEY');
     return res.status(500).json({ error: 'Server configuration error' });
   }
-  console.log('\n=== /api/lesson called ===');
-  console.log('Using OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
+  //console.log('\n=== /api/lesson called ===');
+  //console.log('Using OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
 
   console.log('Request body:', JSON.stringify(req.body, null, 2));
 
