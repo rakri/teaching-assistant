@@ -301,22 +301,19 @@ export default function Home() {
                 onChange={e => setAnswerInput(e.target.value)}
                 className="flex-1 border-2 border-yellow-300 rounded-xl p-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-yellow-50"
                 placeholder="Type your answer..."
-              />
-              <button
-                onClick={handleAnswerSubmit}
+              />              <button
+                onClick={() => handleAnswerSubmit()}
                 className="bg-gradient-to-r from-yellow-400 to-blue-400 hover:from-yellow-500 hover:to-blue-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition"
               >
                 Submit
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">              {questionToShow.options?.map((opt,i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {questionToShow.options?.map((opt,i) => (
                 <button
                   key={i}
-                  onClick={() => {
-                    setAnswerInput(opt);
-                    handleAnswerSubmit();
-                  }}
+                  onClick={() => handleAnswerSubmit(opt)}
                   className="border-2 border-yellow-300 p-3 rounded-xl hover:bg-blue-50 text-lg font-semibold transition bg-yellow-50 shadow"
                 >
                   {opt}
