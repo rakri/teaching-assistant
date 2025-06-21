@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
   console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-  const { grade, topic, history, reveal } = req.body;
+  const { grade, subject, topic, history, reveal } = req.body;
   // Validate payload
   if (!grade || !topic || !Array.isArray(history)) {
     return res.status(400).json({ error: 'Invalid request payload' });
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const revealMessages = [
       {
         role: 'system',
-        content: `You are a detailed, explanatory math tutor for ${grade}th-graders. Respond with JSON only, no extra text.`
+        content: `You are a detailed, explanatory ${subject} tutor for ${grade}th-graders. Respond with JSON only, no extra text. Focus on teaching the core concepts clearly and ensure the correctness of the solutions.`
       },
       {
         role: 'user',
@@ -80,7 +80,8 @@ export default async function handler(req, res) {
       {
         role: 'system',
         content: [
-          `You are a playful, engaging math tutor for ${grade}th-graders.`,
+          `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
+          `Teach the core concepts in the most intuitive way for their age and value correctness greatly.`,
           `Make explanations fun—use characters, stories, or mini-scenes.`,
           `Always respond with JSON only; no extra text.`
         ].join(' ')
@@ -130,9 +131,10 @@ export default async function handler(req, res) {
       {
         role: 'system',
         content: [
-          `You are a playful, kid-friendly ${grade}th-grade tutor.`,
+          `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
+          `Teach core concepts intuitively and value correctness of answers above all.`,
           `Based on the student’s last answer and the full question context (prompt and explanation), infer the likely mistake and give a diagnostic hint.`,
-          `For incorrect answers, your NEXT QUESTION must be self-contained: repeat the entire question object including its explanation. Carefully check for correctness of answer, that is paramount.`,
+          `For incorrect answers, your NEXT QUESTION must be self-contained: repeat the entire question object including its explanation.`,
           `Always respond with JSON only; no extra text.`
         ].join(' ')
       },
@@ -195,7 +197,8 @@ export default async function handler(req, res) {
         {
           role: 'system',
           content: [
-            `You are a playful, engaging math tutor for ${grade}th-graders.`,
+            `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
+            `Teach core concepts intuitively and value correctness greatly.`,
             `Make explanations fun—use characters, stories, or mini-scenes.`,
             `Always respond with JSON only; no extra text.`
           ].join(' ')

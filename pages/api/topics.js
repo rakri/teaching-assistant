@@ -7,15 +7,22 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end('Method Not Allowed');
   }
-  const { grade } = req.query;
-  console.log('/api/topics called with grade:', grade);
+  const { grade, subject } = req.query;
+  console.log('/api/topics called with grade:', grade, 'subject:', subject);
 
   try {
+    const plannerRole = {
+      math: 'You are an elementary math curriculum planner.',
+      science: 'You are an elementary science curriculum planner.',
+      spanish: 'You are a beginner Spanish language curriculum planner.',
+      hindi: 'You are a beginner Hindi language curriculum planner.'
+    }[subject] || 'You are an elementary tutor.';
+
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages: [
-        { role: 'system', content: 'You are an elementary math curriculum planner.' },
-        { role: 'user', content: `List the basic topics appropriate for grade ${grade} math as a JSON array of strings. Always respond with JSON only; no extra text. ` }
+        { role: 'system', content: plannerRole },
+        { role: 'user', content: `List the basic topics appropriate for grade ${grade} ${subject} as a JSON array of strings. Always respond with JSON only; no extra text.` }
       ],
       temperature: TEMPERATURE,
     });
