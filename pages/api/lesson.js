@@ -24,6 +24,10 @@ export default async function handler(req, res) {
   const lastEntry = history.length > 0 ? history[history.length - 1] : null;
   console.log('Last entry:', JSON.stringify(lastEntry, null, 2));
 
+  // Extract previous question prompts to avoid repetition
+  const previousQuestions = history.map(entry => entry.question?.prompt).filter(Boolean);
+  console.log('Previous questions:', previousQuestions);
+
   const isFirst = history.length === 0;
 
   // Handle reveal request: provide detailed solution and next question
@@ -33,8 +37,8 @@ export default async function handler(req, res) {
       {
         role: 'system',
         content: [
-          `You are a detailed, explanatory ${subject} tutor for ${grade}th-graders.`,
-          `Focus on teaching fundamental concepts with age-appropriate language and short real-world examples.`,
+          subject === 'spanish' || subject === 'hindi' ? `You are a detailed, explanatory ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a detailed, explanatory ${subject} tutor for ${grade}th-graders.`,
+          subject === 'spanish' || subject === 'hindi' ? `Provide explanations in English and ${subject} content with English translations. Focus on practical language learning with age-appropriate examples.` : `Focus on teaching fundamental concepts with age-appropriate language and short real-world examples.`,
           `Ensure your solutions are correct and respond with JSON only; no extra text.`
         ].join(' ')
       },
@@ -45,6 +49,7 @@ export default async function handler(req, res) {
           JSON.stringify({ question: lastEntry.question, explanation: lastEntry.explanation }, null, 2),
           `Student answered: "${lastEntry.answer}"`,
           `Now provide a step-by-step solution, using a simple real-world context if helpful, and then give a new question on "${topic}".`,
+          previousQuestions.length > 0 ? `IMPORTANT: Avoid repeating these previously asked questions: ${previousQuestions.join('; ')}. Create a completely different question on the same topic.` : '',
           `Return exactly this JSON shape (no fences):`,
           `{`,
           `  "status": "revealed",`,
@@ -57,7 +62,7 @@ export default async function handler(req, res) {
           `    "explanation": "…string…"`,
           `  }`,
           `}`,
-        ].join('\n')
+        ].filter(Boolean).join('\n')
       }
     ];
     console.log('📤 Reveal LLM messages:', JSON.stringify(revealMessages, null, 2));
@@ -84,8 +89,8 @@ export default async function handler(req, res) {
       {
         role: 'system',
         content: [
-          `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
-          `Focus on helping students master fundamental ideas with age-appropriate language and brief real-world examples.`,
+          subject === 'spanish' || subject === 'hindi' ? `You are a playful, engaging ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
+          subject === 'spanish' || subject === 'hindi' ? `Provide explanations in English and ${subject} content with English translations. Focus on practical language learning with brief real-world examples that help English speakers understand ${subject}.` : `Focus on helping students master fundamental ideas with age-appropriate language and brief real-world examples.`,
           `Make explanations fun—use characters, stories, or mini-scenes.`,
           `Value correctness greatly and always respond with JSON only; no extra text.`
         ].join(' ')
@@ -93,9 +98,10 @@ export default async function handler(req, res) {
       {
         role: 'user',
         content: [
-          `Introduce the concept "${topic}" with a one-sentence mini-story or analogy a ${grade}th-grader will love.`,
-          `Explain the idea in simple terms and include a short real-world example suited to their grade.`,
-          `Then give exactly one practice question that either applies the concept in real life or drills the basic skill.`,
+          subject === 'spanish' || subject === 'hindi' ? `Introduce the ${subject} concept "${topic}" with a one-sentence mini-story or analogy a ${grade}th-grade English speaker will love. Provide explanations in English with ${subject} words/phrases and their English translations.` : `Introduce the concept "${topic}" with a one-sentence mini-story or analogy a ${grade}th-grader will love.`,
+          subject === 'spanish' || subject === 'hindi' ? `Explain the language concept in simple English terms and include ${subject} examples with translations. Focus on practical usage for English speakers learning ${subject}.` : `Explain the idea in simple terms and include a short real-world example suited to their grade.`,
+          subject === 'spanish' || subject === 'hindi' ? `Then give exactly one practice question that helps English speakers practice ${subject} vocabulary, grammar, or conversation skills.` : `Then give exactly one practice question that either applies the concept in real life or drills the basic skill.`,
+          previousQuestions.length > 0 ? `IMPORTANT: Avoid repeating these previously asked questions: ${previousQuestions.join('; ')}. Create a completely different question on the same topic.` : '',
           `Return exactly this JSON shape (no fences):`,
           "```json",
           `{
@@ -109,7 +115,7 @@ export default async function handler(req, res) {
   }
 }`,
           "```"
-        ].join('\n')
+        ].filter(Boolean).join('\n')
       }
     ];
     console.log('📤 Initial LLM messages:', JSON.stringify(initMessages, null, 2));
@@ -136,8 +142,8 @@ export default async function handler(req, res) {
       {
         role: 'system',
         content: [
-          `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
-          `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
+          subject === 'spanish' || subject === 'hindi' ? `You are a playful, kid-friendly ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
+          subject === 'spanish' || subject === 'hindi' ? `Focus on checking that the English-speaking student grasps the ${subject} language concept. Provide feedback and hints in English with ${subject} translations when helpful.` : `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
           `Based on the student’s last answer and the full question context (prompt and explanation), infer the likely mistake and give a short real-world hint if possible.`,
           `For incorrect answers, your NEXT QUESTION must be self-contained: repeat the entire question object including its explanation.`,
           `Always respond with JSON only; no extra text.`
@@ -202,8 +208,8 @@ export default async function handler(req, res) {
         {
           role: 'system',
           content: [
-            `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
-            `Focus on reinforcing basic concepts with age-appropriate language and real-world contexts.`,
+            subject === 'spanish' || subject === 'hindi' ? `You are a playful, engaging ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
+            subject === 'spanish' || subject === 'hindi' ? `Focus on reinforcing ${subject} language concepts with English explanations and ${subject} content with translations. Use real-world contexts that help English speakers understand ${subject}.` : `Focus on reinforcing basic concepts with age-appropriate language and real-world contexts.`,
             `Make explanations fun—use characters, stories, or mini-scenes.`,
             `Always respond with JSON only; no extra text.`
           ].join(' ')
@@ -215,7 +221,8 @@ export default async function handler(req, res) {
             JSON.stringify(lastEntry.question, null, 2),
             `Student answered: "${lastEntry.answer}"`,
             ``,
-            `Now, give a new question on the same topic "${topic}" that checks another fundamental aspect using a brief real-world example or a basic drill.`,
+            subject === 'spanish' || subject === 'hindi' ? `Now, give a new question on the same ${subject} topic "${topic}" that helps English speakers practice another aspect of ${subject} language learning with practical examples.` : `Now, give a new question on the same topic "${topic}" that checks another fundamental aspect using a brief real-world example or a basic drill.`,
+            previousQuestions.length > 0 ? `IMPORTANT: Avoid repeating these previously asked questions: ${previousQuestions.join('; ')}. Create a completely different question on the same topic.` : '',
             `Return exactly this JSON shape (no fences):`,
             "```json",
             `{
@@ -229,7 +236,7 @@ export default async function handler(req, res) {
   }
 }`,
             "```"
-          ].join('\n')
+          ].filter(Boolean).join('\n')
         }
       ];
       console.log('📤 Generation messages:', JSON.stringify(genMessages, null, 2));

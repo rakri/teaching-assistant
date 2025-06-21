@@ -14,15 +14,15 @@ export default async function handler(req, res) {
     const plannerRole = {
       math: 'You are an elementary math curriculum planner.',
       science: 'You are an elementary science curriculum planner.',
-      spanish: 'You are a beginner Spanish language curriculum planner.',
-      hindi: 'You are a beginner Hindi language curriculum planner.'
+      spanish: 'You are a beginner Spanish language curriculum planner for English speakers. Plan topics that help English speakers learn Spanish vocabulary, grammar, and conversation skills.',
+      hindi: 'You are a beginner Hindi language curriculum planner for English speakers. Plan topics that help English speakers learn Hindi vocabulary, grammar, and conversation skills.'
     }[subject] || 'You are an elementary tutor.';
 
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages: [
         { role: 'system', content: plannerRole },
-        { role: 'user', content: `List the fundamental ${subject} topics appropriate for grade ${grade} as a JSON array of strings. Focus on core concepts that build a strong foundation. Always respond with JSON only; no extra text.` }
+        { role: 'user', content: subject === 'spanish' || subject === 'hindi' ? `List the fundamental ${subject} topics appropriate for grade ${grade} English-speaking students learning ${subject} as a JSON array of strings. Focus on practical vocabulary, basic grammar, and conversational skills that build a strong foundation for language learning. Always respond with JSON only; no extra text.` : `List the fundamental ${subject} topics appropriate for grade ${grade} as a JSON array of strings. Focus on core concepts that build a strong foundation. Always respond with JSON only; no extra text.` }
       ],
       temperature: TEMPERATURE,
     });
