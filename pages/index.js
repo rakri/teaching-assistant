@@ -58,8 +58,9 @@ export default function Home() {
   };
 
   // 3) Submit an answer
-  const handleAnswerSubmit = async () => {
-    if (!answerInput) return;
+  const handleAnswerSubmit = async (submittedAnswer) => {
+    const answer = submittedAnswer ?? answerInput;
+    if (!answer) return;
 
     // Pick the question the user actually saw
     const questionToLog = content.nextQuestion ?? content.question;
@@ -70,7 +71,7 @@ export default function Home() {
       {
         question: questionToLog,
         explanation: content.explanation,
-        answer: answerInput
+        answer
       }
     ];
     console.log('New history:', newHistory);
@@ -268,8 +269,7 @@ export default function Home() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {questionToShow.options?.map((opt,i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">              {questionToShow.options?.map((opt,i) => (
                 <button
                   key={i}
                   onClick={() => {
