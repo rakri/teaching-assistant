@@ -32,7 +32,11 @@ export default async function handler(req, res) {
     const revealMessages = [
       {
         role: 'system',
-        content: `You are a detailed, explanatory ${subject} tutor for ${grade}th-graders. Respond with JSON only, no extra text. Focus on teaching the core concepts clearly and ensure the correctness of the solutions.`
+        content: [
+          `You are a detailed, explanatory ${subject} tutor for ${grade}th-graders.`,
+          `Focus on teaching fundamental concepts with age-appropriate language and short real-world examples.`,
+          `Ensure your solutions are correct and respond with JSON only; no extra text.`
+        ].join(' ')
       },
       {
         role: 'user',
@@ -40,7 +44,7 @@ export default async function handler(req, res) {
           `Here is the last question, its explanation, and the student's answer:`,
           JSON.stringify({ question: lastEntry.question, explanation: lastEntry.explanation }, null, 2),
           `Student answered: "${lastEntry.answer}"`,
-          `Now provide a step-by-step solution and then a new question on "${topic}".`,
+          `Now provide a step-by-step solution, using a simple real-world context if helpful, and then give a new question on "${topic}".`,
           `Return exactly this JSON shape (no fences):`,
           `{`,
           `  "status": "revealed",`,
@@ -81,16 +85,17 @@ export default async function handler(req, res) {
         role: 'system',
         content: [
           `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
-          `Teach the core concepts in the most intuitive way for their age and value correctness greatly.`,
+          `Focus on helping students master fundamental ideas with age-appropriate language and brief real-world examples.`,
           `Make explanations fun—use characters, stories, or mini-scenes.`,
-          `Always respond with JSON only; no extra text.`
+          `Value correctness greatly and always respond with JSON only; no extra text.`
         ].join(' ')
       },
       {
         role: 'user',
         content: [
-          `Introduce the concept "${topic}" with a 1-sentence mini-story or analogy a ${grade}th-grader will love.`,
-          `Then give exactly one practice question—alternate between creative real-world problems and basic drills.`,
+          `Introduce the concept "${topic}" with a one-sentence mini-story or analogy a ${grade}th-grader will love.`,
+          `Explain the idea in simple terms and include a short real-world example suited to their grade.`,
+          `Then give exactly one practice question that either applies the concept in real life or drills the basic skill.`,
           `Return exactly this JSON shape (no fences):`,
           "```json",
           `{
@@ -132,8 +137,8 @@ export default async function handler(req, res) {
         role: 'system',
         content: [
           `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
-          `Teach core concepts intuitively and value correctness of answers above all.`,
-          `Based on the student’s last answer and the full question context (prompt and explanation), infer the likely mistake and give a diagnostic hint.`,
+          `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
+          `Based on the student’s last answer and the full question context (prompt and explanation), infer the likely mistake and give a short real-world hint if possible.`,
           `For incorrect answers, your NEXT QUESTION must be self-contained: repeat the entire question object including its explanation.`,
           `Always respond with JSON only; no extra text.`
         ].join(' ')
@@ -198,7 +203,7 @@ export default async function handler(req, res) {
           role: 'system',
           content: [
             `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
-            `Teach core concepts intuitively and value correctness greatly.`,
+            `Focus on reinforcing basic concepts with age-appropriate language and real-world contexts.`,
             `Make explanations fun—use characters, stories, or mini-scenes.`,
             `Always respond with JSON only; no extra text.`
           ].join(' ')
@@ -210,7 +215,7 @@ export default async function handler(req, res) {
             JSON.stringify(lastEntry.question, null, 2),
             `Student answered: "${lastEntry.answer}"`,
             ``,
-            `Now, give a new question on the same topic "${topic}" to challenge the student further.`,
+            `Now, give a new question on the same topic "${topic}" that checks another fundamental aspect using a brief real-world example or a basic drill.`,
             `Return exactly this JSON shape (no fences):`,
             "```json",
             `{
