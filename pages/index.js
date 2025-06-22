@@ -416,7 +416,7 @@ export default function Home() {
           <p className="text-xl font-semibold text-blue-800 drop-shadow-sm">{questionToShow.prompt}</p>
         </div>
         <div>
-          {questionToShow.type === 'numeric' ? (
+          {['numeric', 'text'].includes(questionToShow.type) ? (
             <div className="flex space-x-4">
               <input
                 type="text"

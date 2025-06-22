@@ -74,7 +74,7 @@ export default async function handler(req, res) {
           `  "nextQuestion": {`,
           `    "id": "…string…",`,
           `    "prompt": "…string…",`,
-          `    "type": "numeric" or "mcq",`,
+          `    "type": "numeric" or "mcq" or "text",`,
           `    "options"?: ["…string…"],`,
           `    "explanation": "…string…"`,
           `  }`,
@@ -128,7 +128,7 @@ export default async function handler(req, res) {
   "question": {
     "id": "…string…",
     "prompt": "…string…",
-    "type": "numeric"|"mcq",
+    "type": "numeric"|"mcq"|"text",
     "options"?: ["…string…"]
   }
 }`,
@@ -251,7 +251,7 @@ export default async function handler(req, res) {
   "question": {
     "id": "…string…",
     "prompt": "…string…",
-    "type": "numeric"|"mcq",
+    "type": "numeric"|"mcq"|"text",
     "options"?: ["…string…"]
   }
 }`,
