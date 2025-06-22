@@ -160,44 +160,19 @@ export default async function handler(req, res) {
       {
         role: 'system',
         content: [
-          subject === 'spanish' || subject === 'hindi' ? `You are a playful, kid-friendly ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
-          subject === 'spanish' || subject === 'hindi' ? `Focus on checking that the English-speaking student grasps the ${subject} language concept. Provide feedback and hints in English with ${subject} translations when helpful.` : `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
-          `Based on the student's last answer and the full question context (prompt and explanation), evaluate if the answer is correct and provide helpful feedback.`,
-          `For incorrect answers, provide a diagnostic hint that helps the student understand their mistake.`,
-          difficultyInstructions,
-          `Always respond with JSON only; no extra text.`
+//          subject === 'spanish' || subject === 'hindi' ? `You are a playful, kid-friendly ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
+//          subject === 'spanish' || subject === 'hindi' ? `Focus on checking that the English-speaking student grasps the ${subject} language concept. Provide feedback and hints in English with ${subject} translations when helpful.` : `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
+          `Based on the student's answer and the full question with context, think hard and evaluate if the answer is correct or not. 
+          Make sure the final answer in your response is correct or incorrect. This rule HAS to be followed, and the response cannot end with any other word, not even a full stop like "correct." or "incorrect.".`
         ].join(' ')
       },
       {
         role: 'user',
         content: [
+          lastEntry.explanation ? `Context: ${lastEntry.explanation}` : '',
           `Question: ${lastEntry.question.prompt}`,
-          ``,
-          lastEntry.explanation ? `Explanation: ${lastEntry.explanation}` : '',
-          ``,
-          `Student Answer: ${lastEntry.answer}`,
-          ``,
-          `Is the student's answer correct? Evaluate it carefully.`,
-          ``,
-          `If correct, return:`,
-          "```json",
-          `{
-  "status": "correct",
-  "feedback": "Great job! You nailed it! 🎉"
-}`,
-          "```",
-          ``,
-          `If incorrect, return:`,
-          "```json",
-          `{
-  "status": "incorrect",
-  "feedback": "Not quite right, but you're on the right track!",
-  "hint": "[Provide a specific hint about what went wrong and how to think about the problem]"
-}`,
-          "```",
-          ``,
-          `Only return the JSON object, nothing else.`
-        ].filter(Boolean).join('\n')
+          `Student Answer: ${lastEntry.answer}`
+        ].filter(Boolean).join('. ')
       }
     ];
     console.log('📤 Eval LLM messages:', JSON.stringify(evalMessages, null, 2));
@@ -209,11 +184,135 @@ export default async function handler(req, res) {
     console.log('📥 Eval LLM response raw:', evalResp.choices?.[0]?.message?.content);
     if (!evalResp.choices?.length) throw new Error('No choices from evaluation');
     const evalRaw = evalResp.choices[0].message.content;
-    const evalData = stripAndParseJson(evalRaw);
-    console.log('✅ Evaluation parsed:', JSON.stringify(evalData, null, 2));
     
-    // For incorrect answers, include the original question for re-display
-    if (evalData.status === 'incorrect') {
+    // Extract the final word to determine correctness
+    const finalWord = evalRaw.trim().split(/\s+/).pop().toLowerCase();
+    console.log('🔍 Final word from evaluation:', finalWord);
+    
+    let status;
+    if (finalWord === 'correct') {
+      status = 'correct';
+    } else if (finalWord === 'incorrect') {
+      status = 'incorrect';
+    } else {
+      console.warn('⚠️ Unexpected final word:', finalWord, 'defaulting to incorrect');
+      status = 'incorrect';
+    }
+    
+    // Create evaluation response object
+    const evalData = {
+      status: status,
+      feedback: evalRaw, // Use the full LLM response as feedback
+    };
+    
+    // For correct answers, generate an explanation of why it's correct
+    if (status === 'correct') {
+      console.log('✅ Answer correct, generating explanation...');
+      
+      const explanationMessages = [
+        {
+          role: 'system',
+          content: [
+            subject === 'spanish' || subject === 'hindi' ? `You are an encouraging ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are an encouraging ${subject} tutor for ${grade}th-graders.`,
+            `Provide a clear, positive explanation of why the student's answer is correct.`,
+            `Help them understand the reasoning and reinforce their learning.`,
+            `Always respond with JSON only; no extra text.`
+          ].join(' ')
+        },
+        {
+          role: 'user',
+          content: [
+            `Question: ${lastEntry.question.prompt}`,
+            lastEntry.explanation ? `Context: ${lastEntry.explanation}` : '',
+            `Student's correct answer: ${lastEntry.answer}`,
+            ``,
+            `Explain why this answer is correct and help reinforce their understanding.`,
+            `Return exactly this JSON format:`,
+            `{`,
+            `  "explanation": "Great job! Here's why your answer is correct: [clear explanation]"`,
+            `}`
+          ].filter(Boolean).join('\n')
+        }
+      ];
+      
+      console.log('📤 Explanation generation messages:', JSON.stringify(explanationMessages, null, 2));
+      
+      try {
+        const explainResp = await openai.chat.completions.create({
+          model: MODEL_EVAL,
+          messages: explanationMessages,
+          temperature: TEMP_GEN,
+        });
+        
+        const explainRaw = explainResp.choices?.[0]?.message?.content;
+        console.log('📥 Explanation generation response raw:', explainRaw);
+        
+        if (explainRaw) {
+          const explainData = stripAndParseJson(explainRaw);
+          evalData.explanation = explainData.explanation;
+        } else {
+          evalData.explanation = "Great job! Your answer is correct!";
+        }
+      } catch (explainErr) {
+        console.error('❌ Explanation generation error:', explainErr);
+        evalData.explanation = "Great job! Your answer is correct!";
+      }
+    }
+    
+    // For incorrect answers, generate a hint and include the original question for re-display
+    else if (status === 'incorrect') {
+      console.log('🔍 Answer incorrect, generating hint...');
+      
+      // Generate hint with separate LLM call
+      const hintMessages = [
+        {
+          role: 'system',
+          content: [
+            subject === 'spanish' || subject === 'hindi' ? `You are a helpful ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a helpful ${subject} tutor for ${grade}th-graders.`,
+            `Provide a clear, encouraging hint that guides the student toward the correct answer without giving it away completely.`,
+            `Focus on helping them understand their mistake and think through the problem step by step.`,
+            `Always respond with JSON only; no extra text.`
+          ].join(' ')
+        },
+        {
+          role: 'user',
+          content: [
+            `Question: ${lastEntry.question.prompt}`,
+            lastEntry.explanation ? `Context: ${lastEntry.explanation}` : '',
+            `Student's incorrect answer: ${lastEntry.answer}`,
+            ``,
+            `Provide a helpful hint that guides the student toward the correct answer without revealing the answer like a teacher would.`,
+            `Return exactly this JSON format:`,
+            `{`,
+            `  "hint": "Your encouraging hint here that helps them understand what to think about or reconsider"`,
+            `}`
+          ].filter(Boolean).join('\n')
+        }
+      ];
+      
+      console.log('📤 Hint generation messages:', JSON.stringify(hintMessages, null, 2));
+      
+      try {
+        const hintResp = await openai.chat.completions.create({
+          model: MODEL_EVAL,
+          messages: hintMessages,
+          temperature: TEMP_GEN, // Use generation temperature for more creative hints
+        });
+        
+        const hintRaw = hintResp.choices?.[0]?.message?.content;
+        console.log('📥 Hint generation response raw:', hintRaw);
+        
+        if (hintRaw) {
+          const hintData = stripAndParseJson(hintRaw);
+          evalData.hint = hintData.hint;
+        } else {
+          evalData.hint = "Think about this step by step. What part of the question might you have missed?";
+        }
+      } catch (hintErr) {
+        console.error('❌ Hint generation error:', hintErr);
+        evalData.hint = "Think about this step by step. What part of the question might you have missed?";
+      }
+      
       evalData.question = {
         ...lastEntry.question,
         explanation: lastEntry.explanation
@@ -221,6 +320,7 @@ export default async function handler(req, res) {
       evalData.explanation = lastEntry.explanation;
     }
     
+    console.log('✅ Evaluation processed:', JSON.stringify(evalData, null, 2));
     return res.status(200).json(evalData);
   } catch (err) {
     console.error('❌ Follow-up lesson error:', err);

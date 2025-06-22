@@ -161,18 +161,19 @@ export default function Home() {
         const questionData = await questionRes.json();
         console.log('New question generated:', questionData);
         
-        // Combine evaluation result with new question
+        // Show explanation of why answer was correct + new question
         const combinedData = {
-          ...evalData,
+          status: 'correct',
+          feedback: evalData.feedback,
+          explanation: evalData.explanation, // Explanation of why the answer was correct
           nextQuestion: questionData.question,
-          explanation: questionData.explanation,
-          status: 'correct'
+          newQuestionExplanation: questionData.explanation // Context for the new question
         };
         setContent(combinedData);
         
       } else if (evalData.status === 'incorrect') {
         setAttempts(prev => prev + 1);
-        // For incorrect answers, just use the evaluation result (includes same question + hint)
+        // For incorrect answers, show hint with the same question
         setContent(evalData);
       }
       
@@ -420,18 +421,36 @@ export default function Home() {
             <p className="text-lg font-medium">{content.solution}</p>
           </div>
         )}
-        {/* Show feedback above the next question */}
+        {/* Show feedback for evaluation */}
         {content.feedback && (
           <div className={`${feedbackColor} text-lg font-medium`}>{content.feedback}</div>
         )}
-        {showExplanation && (
+        
+        {/* Show explanation for correct answers */}
+        {content.status === 'correct' && content.explanation && (
+          <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded">
+            <p className="text-lg font-medium text-green-800">✅ {content.explanation}</p>
+          </div>
+        )}
+        
+        {/* Show context/explanation for new questions */}
+        {content.status === 'correct' && content.newQuestionExplanation && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+            <p className="text-lg">{content.newQuestionExplanation}</p>
+          </div>
+        )}
+        
+        {/* Show explanation for initial questions or non-incorrect states */}
+        {content.status !== 'incorrect' && content.status !== 'correct' && content.explanation && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
             <p className="text-lg">{content.explanation}</p>
           </div>
         )}
-        {isIncorrect && content.hint && (
+        
+        {/* Show hint for incorrect answers */}
+        {content.status === 'incorrect' && content.hint && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-            <p className="text-lg">{content.hint}</p>
+            <p className="text-lg">💡 {content.hint}</p>
           </div>
         )}
         <div className="bg-white p-4 border-2 border-blue-100 rounded-xl">
