@@ -153,7 +153,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'Lesson generation failed' });
     }
   }
-  // Follow-up: evaluate answer only (no question generation)
+  // Follow-up: evaluate answer first, then generate next question if correct
   try {
     // Evaluate correctness & get feedback/hint
     const evalMessages = [
@@ -162,8 +162,8 @@ export default async function handler(req, res) {
         content: [
           subject === 'spanish' || subject === 'hindi' ? `You are a playful, kid-friendly ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, kid-friendly ${subject} tutor for ${grade}th-graders.`,
           subject === 'spanish' || subject === 'hindi' ? `Focus on checking that the English-speaking student grasps the ${subject} language concept. Provide feedback and hints in English with ${subject} translations when helpful.` : `Focus on checking that the student grasps the basic concept and guide them with clear, correct reasoning.`,
-          `Based on the student's last answer and the full question context (prompt and explanation), evaluate if the answer is correct and provide helpful feedback.`,
-          `For incorrect answers, provide a diagnostic hint that helps the student understand their mistake.`,
+          `Based on the student’s last answer and the full question context (prompt and explanation), infer the likely mistake and give a short real-world hint if possible.`,
+          `For incorrect answers, your NEXT QUESTION must be self-contained: repeat the entire question object including its explanation.`,
           difficultyInstructions,
           `Always respond with JSON only; no extra text.`
         ].join(' ')
@@ -171,33 +171,39 @@ export default async function handler(req, res) {
       {
         role: 'user',
         content: [
-          `Question: ${lastEntry.question.prompt}`,
-          ``,
-          lastEntry.explanation ? `Explanation: ${lastEntry.explanation}` : '',
-          ``,
-          `Student Answer: ${lastEntry.answer}`,
-          ``,
-          `Is the student's answer correct? Evaluate it carefully.`,
+          `Here is the last question, its explanation, and the student's answer:`,
+          JSON.stringify({
+            question: lastEntry.question,
+            explanation: lastEntry.explanation
+          }, null, 2),
+          `Student answered: "${lastEntry.answer}"`,
           ``,
           `If correct, return:`,
           "```json",
           `{
   "status": "correct",
-  "feedback": "Great job! You nailed it! 🎉"
+  "feedback": "Great job! You nailed it! 🎉",
+  "nextQuestion": { /* brand-new question */ }
 }`,
           "```",
           ``,
-          `If incorrect, return:`,
+          `If incorrect, return JSON where:`,
+          `  • "hint" is a diagnostic tip, and`,
+          `  • "nextQuestion" repeats the entire question object including its explanation:`,
           "```json",
-          `{
-  "status": "incorrect",
-  "feedback": "Not quite right, but you're on the right track!",
-  "hint": "[Provide a specific hint about what went wrong and how to think about the problem]"
-}`,
+          JSON.stringify({
+  status: "incorrect",
+  feedback: "Oops, not quite—let’s walk through it.",
+  hint: "…diagnostic hint…",
+  nextQuestion: {
+    ...lastEntry.question,
+    explanation: lastEntry.explanation
+  }
+}, null, 2),
           "```",
           ``,
-          `Only return the JSON object, nothing else.`
-        ].filter(Boolean).join('\n')
+          `Do not include anything outside the JSON object.`
+        ].join('\n')
       }
     ];
     console.log('📤 Eval LLM messages:', JSON.stringify(evalMessages, null, 2));
@@ -211,16 +217,85 @@ export default async function handler(req, res) {
     const evalRaw = evalResp.choices[0].message.content;
     const evalData = stripAndParseJson(evalRaw);
     console.log('✅ Evaluation parsed:', JSON.stringify(evalData, null, 2));
-    
-    // For incorrect answers, include the original question for re-display
-    if (evalData.status === 'incorrect') {
-      evalData.question = {
-        ...lastEntry.question,
-        explanation: lastEntry.explanation
-      };
-      evalData.explanation = lastEntry.explanation;
+    const statusNorm = String(evalData.status).toLowerCase().trim();
+    console.log('🔍 Normalized status:', statusNorm);
+
+    // If correct, generate fresh nextQuestion
+    if (statusNorm === 'correct') {
+      console.log('✨ Status is correct, generating next question');
+      const genMessages = [
+        {
+          role: 'system',
+          content: [
+            subject === 'spanish' || subject === 'hindi' ? `You are a playful, engaging ${subject} tutor for ${grade}th-grade English speakers learning ${subject}.` : `You are a playful, engaging ${subject} tutor for ${grade}th-graders.`,
+            subject === 'spanish' || subject === 'hindi' ? `Focus on reinforcing ${subject} language concepts with English explanations and ${subject} content with translations. Use real-world contexts that help English speakers understand ${subject}.` : `Focus on reinforcing basic concepts with age-appropriate language and real-world contexts.`,
+            `Make explanations fun—use characters, stories, or mini-scenes.`,
+            difficultyInstructions,
+            `Always respond with JSON only; no extra text.`
+          ].join(' ')
+        },
+        {
+          role: 'user',
+          content: [
+            `Here is the last question and answer:`,
+            JSON.stringify(lastEntry.question, null, 2),
+            `Student answered: "${lastEntry.answer}"`,
+            ``,
+            subject === 'spanish' || subject === 'hindi' ? `Now, give a new question on the same ${subject} topic "${topic}" that helps English speakers practice another aspect of ${subject} language learning with practical examples.` : `Now, give a new question on the same topic "${topic}" that checks another fundamental aspect using a brief real-world example or a basic drill.`,
+            previousQuestions.length > 0 ? `IMPORTANT: Avoid repeating these previously asked questions: ${previousQuestions.join('; ')}. Create a completely different question on the same topic.` : '',
+            `Return exactly this JSON shape (no fences):`,
+            "```json",
+            `{
+  "status": "pending",
+  "explanation": "…string…",
+  "question": {
+    "id": "…string…",
+    "prompt": "…string…",
+    "type": "numeric"|"mcq"|"text",
+    "options"?: ["…string…"]
+  }
+}`,
+            "```"
+          ].filter(Boolean).join('\n')
+        }
+      ];
+      console.log('📤 Generation messages:', JSON.stringify(genMessages, null, 2));
+      const genResp = await openai.chat.completions.create({
+        model: MODEL,
+        messages: genMessages,
+        temperature: TEMP_GEN,
+      });
+      console.log('📥 Gen LLM response raw:', genResp.choices?.[0]?.message?.content);
+      if (genResp.choices?.length) {
+        const genRaw = genResp.choices[0].message.content;
+        console.log('📥 Raw generated question:', genRaw);
+        try {
+          const genData = stripAndParseJson(genRaw);
+          // Extract the question object so front-end sees correct prompt
+          evalData.nextQuestion = genData.question;
+          // Optionally include explanation for follow-up
+          evalData.explanation = genData.explanation;
+          console.log('✅ Extracted nextQuestion:', JSON.stringify(evalData.nextQuestion, null, 2));
+          console.log('📖 Follow-up explanation:', genData.explanation);
+        } catch (err) {
+          console.error('❌ Error parsing generated question:', err);
+        }
+      } else {
+        console.warn('⚠️ No choices returned for nextQuestion generation');
+      }
+    } else {
+      console.log('ℹ️ Status not correct, using repeated question');
+      // Ensure full context: add original explanation
+      if (lastEntry.explanation) {
+        console.log('🛠️ Attaching original explanation to nextQuestion and response');
+        evalData.nextQuestion = {
+          ...evalData.nextQuestion,
+          explanation: lastEntry.explanation,
+        };
+        // Expose explanation at top level for UI
+        evalData.explanation = lastEntry.explanation;
+      }
     }
-    
     return res.status(200).json(evalData);
   } catch (err) {
     console.error('❌ Follow-up lesson error:', err);

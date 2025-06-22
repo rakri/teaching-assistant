@@ -134,24 +134,46 @@ export default function Home() {
     setLessonLoading(true);
 
     try {
-      const res = await fetch('/api/lesson', {
+      // Step 1: Evaluate the answer
+      const evalRes = await fetch('/api/lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grade, subject, topic: selectedTopic, history: newHistory, difficulty: difficultyLevel }),
       });
-      const data = await res.json();
-      console.log('Lesson follow-up content:', data);
-      setContent(data);
+      const evalData = await evalRes.json();
+      console.log('Answer evaluation result:', evalData);
 
       // Track score and update difficulty
       const newTotalAnswers = totalAnswers + 1;
       let newCorrectAnswers = correctAnswers;
       
-      if (data.status === 'correct') {
+      if (evalData.status === 'correct') {
         newCorrectAnswers = correctAnswers + 1;
         setAttempts(0);
-      } else if (data.status === 'incorrect') {
+        
+        // Step 2: If correct, generate a new question
+        console.log('Answer correct, generating new question...');
+        const questionRes = await fetch('/api/generate-question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grade, subject, topic: selectedTopic, history: newHistory, difficulty: difficultyLevel }),
+        });
+        const questionData = await questionRes.json();
+        console.log('New question generated:', questionData);
+        
+        // Combine evaluation result with new question
+        const combinedData = {
+          ...evalData,
+          nextQuestion: questionData.question,
+          explanation: questionData.explanation,
+          status: 'correct'
+        };
+        setContent(combinedData);
+        
+      } else if (evalData.status === 'incorrect') {
         setAttempts(prev => prev + 1);
+        // For incorrect answers, just use the evaluation result (includes same question + hint)
+        setContent(evalData);
       }
       
       // Update score tracking
@@ -167,7 +189,7 @@ export default function Home() {
       
       console.log(`Score: ${newCorrectAnswers}/${newTotalAnswers}, Difficulty: ${newDifficulty}`);
     } catch (err) {
-      console.error('Error fetching next question:', err);
+      console.error('Error in answer submission flow:', err);
     } finally {
       setLessonLoading(false);
     }
