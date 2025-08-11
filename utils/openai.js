@@ -7,8 +7,8 @@ if (!apiKey) {
 }
 
 export const openai = new OpenAI({ apiKey });
-export const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
-export const MODEL_EVAL = process.env.OPENAI_MODEL || 'gpt-4o'; // Model for answer evaluation
+export const MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+export const MODEL_EVAL = process.env.OPENAI_MODEL || 'gpt-5-mini'; // Model for answer evaluation
 export const TEMP_GEN = parseFloat(process.env.OPENAI_TEMPERATURE) || 0.7;  // Temperature for question generation
 export const TEMPERATURE = parseFloat(process.env.OPENAI_TEMPERATURE) || 0.7;  // Temperature for question generation
 export const TEMP_EVAL = parseFloat(process.env.OPENAI_EVAL_TEMPERATURE) || 0.1; // Temperature for answer evaluation
