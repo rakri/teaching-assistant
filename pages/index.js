@@ -421,8 +421,8 @@ export default function Home() {
             <p className="text-lg font-medium">{content.solution}</p>
           </div>
         )}
-        {/* Show feedback for evaluation */}
-        {content.feedback && (
+        {/* Show feedback only when not incorrect (hide red feedback on wrong answers) */}
+        {content.feedback && !isIncorrect && (
           <div className={`${feedbackColor} text-lg font-medium`}>{content.feedback}</div>
         )}
         

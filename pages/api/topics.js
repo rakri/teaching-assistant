@@ -22,7 +22,11 @@ export default async function handler(req, res) {
       model: MODEL,
       messages: [
         { role: 'system', content: plannerRole },
-        { role: 'user', content: subject === 'spanish' || subject === 'hindi' ? `List the fundamental ${subject} topics appropriate for grade ${grade} English-speaking students learning ${subject} as a JSON array of strings. Focus on practical vocabulary, basic grammar, and conversational skills that build a strong foundation for language learning. Always respond with JSON only; no extra text.` : `List the fundamental ${subject} topics appropriate for grade ${grade} as a JSON array of strings. Focus on core concepts that build a strong foundation. Always respond with JSON only; no extra text.` }
+        { role: 'user', content: (
+          subject === 'spanish' || subject === 'hindi'
+            ? `List the fundamental ${subject} topics appropriate for grade ${grade} English-speaking students learning ${subject} as a JSON array of strings. Return AT MOST 12 topics. Prioritize foundational coverage and diversity across sub-areas students should master first. Focus on practical vocabulary, basic grammar, and conversational skills. Respond with JSON array ONLY; no extra text.`
+            : `List the fundamental ${subject} topics appropriate for grade ${grade} as a JSON array of strings. Return AT MOST 12 topics. Prioritize foundational coverage and diversity across sub-areas students should master first. Focus on core concepts that build a strong foundation. Respond with JSON array ONLY; no extra text.`
+        ) }
       ],
       temperature: TEMPERATURE,
     });
@@ -41,9 +45,23 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Invalid JSON from LLM', raw });
     }
 
-    console.log('✅ Parsed topics:', topics);
+    // Normalize to an array of unique, non-empty strings and hard-cap to 12
+    if (!Array.isArray(topics)) {
+      console.warn('⚠️ LLM did not return an array. Raw:', topics);
+      return res.status(500).json({ error: 'Invalid topics format from LLM' });
+    }
 
-    res.status(200).json({ topics });
+    const cleaned = topics
+      .filter(t => typeof t === 'string')
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    const unique = Array.from(new Set(cleaned));
+    const limited = unique.slice(0, 12);
+
+    console.log(`✅ Parsed topics (${limited.length} capped):`, limited);
+
+    res.status(200).json({ topics: limited });
   } catch (err) {
     console.error('Error in /api/topics:', err);
     res.status(502).json({ error: 'Topics generation failed' });

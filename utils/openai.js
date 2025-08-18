@@ -7,11 +7,12 @@ if (!apiKey) {
 }
 
 export const openai = new OpenAI({ apiKey });
-export const MODEL = process.env.OPENAI_MODEL || 'gpt-5';
+// Default to GPT-5; allow override via OPENAI_MODEL env var
+export const MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
 export const MODEL_EVAL = process.env.OPENAI_MODEL || 'gpt-5'; // Model for answer evaluation
-export const TEMP_GEN = parseFloat(process.env.OPENAI_TEMPERATURE) || 0.7;  // Temperature for question generation
-export const TEMPERATURE = parseFloat(process.env.OPENAI_TEMPERATURE) || 0.7;  // Temperature for question generation
-export const TEMP_EVAL = parseFloat(process.env.OPENAI_EVAL_TEMPERATURE) || 0.1; // Temperature for answer evaluation
+export const TEMP_GEN = parseFloat(process.env.OPENAI_TEMPERATURE) || 1;  // Temperature for question generation
+export const TEMPERATURE = parseFloat(process.env.OPENAI_TEMPERATURE) || 1;  // Temperature for question generation
+export const TEMP_EVAL = parseFloat(process.env.OPENAI_EVAL_TEMPERATURE) || 1; // Temperature for answer evaluation
 
 /**
  * Strip Markdown fences and parse JSON from LLM response.
